@@ -48,11 +48,11 @@ def mc_batch_size(lqr_monte, number_of_time_steps, x_np):
     H = torch.tensor(lqr_monte.H)
     M = torch.tensor(lqr_monte.M)
     D_inv = torch.tensor(lqr_monte.D_inv)
-    lqr_monte.change_no_of_time_steps(number_of_time_steps)
+    lqr_monte.change_time_steps(number_of_time_steps)
     x_t = {}
     a_t = {}
     tss = {}
-    time_grid_mc = ee.get_time_grid(lqr_monte.t_0, lqr_monte.T, lqr_monte.tss)
+    time_grid_mc = ee.get_time_grid(lqr_monte.t, lqr_monte.T, lqr_monte.tss)
 
     sample_sizes = [10, 50, 100, 500, 1000, 5000, 10000, 50000]
     batch_sizes = [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000]
@@ -84,38 +84,41 @@ def mc_batch_size(lqr_monte, number_of_time_steps, x_np):
 
 
 def Compute_expected_J(x_t, a_t, tss, lqr_mc, is_n_variable):
+    J = {}
     mc_J_mean = {}
     theoretical_v = {}
     theoretical_alpha = {}
     # Set the number of time steps to 5000 for theoretical calculations
-    lqr_mc.ee.change_time_steps(5000)
+    lqr_mc.change_time_steps(5000)
 
     for key in x_t:
+        J[key] =0
         delta_tau = tss[key]
-        J = torch.zeros_like(x_t[key][0][:, 0])  # Initialize cost-to-go
-        x_s_prev, a_s_prev = x_t[key][0], a_t[key][0]  # Get initial states and controls
 
-        # Compute cost-to-go
+        x_s_prev, a_s_prev = x_t[key][0], a_t[key][0]
+        batch_shape = x_s_prev.shape[0]
         for x_s, a_s in zip(x_t[key][1:], a_t[key][1:]):
-            x_C_x_prev = torch.matmul(torch.matmul(x_s_prev, torch.tensor(C)), x_s_prev.transpose(1, 2)).sum(dim=(1, 2))
-            a_D_a_prev = (torch.matmul(a_s_prev, torch.tensor(D)) * a_s_prev).sum(dim=1)
-            x_C_x = torch.matmul(torch.matmul(x_s, torch.tensor(C)), x_s.transpose(1, 2)).sum(dim=(1, 2))
-            a_D_a = (torch.matmul(a_s, torch.tensor(D)) * a_s).sum(dim=1)
-            J += 0.5 * (x_C_x + a_D_a + x_C_x_prev + a_D_a_prev) * delta_tau
-            x_s_prev, a_s_prev = x_s.clone().detach(), a_s.clone().detach()
+            x_C_x_prev = torch.matmul(torch.matmul(x_s_prev, torch.tensor(C)),x_s_prev.transpose(1, 2)).reshape(batch_shape,1)
+            a_D_a_prev= (torch.matmul(a_s_prev, torch.tensor(D)) * a_s_prev).sum(axis=1).reshape(batch_shape,1)
 
-        # Add terminal cost
+            x_C_x = torch.matmul(torch.matmul(x_s, torch.tensor(C)),x_s.transpose(1, 2)).reshape(batch_shape,1)
+            a_D_a= (torch.matmul(a_s, torch.tensor(D)) * a_s).sum(axis=1).reshape(batch_shape,1)
+
+            J[key] += 0.5*(x_C_x + a_D_a + x_C_x_prev + a_D_a_prev) * delta_tau
+            x_s_prev, a_s_prev = x_s.detach().clone(), a_s.detach().clone()
+
         x_T = x_t[key][-1]
-        J += torch.matmul(torch.matmul(x_T, torch.tensor(R)), x_T.transpose(1, 2)).sum(dim=(1, 2))
-        mc_J_mean[key] = torch.mean(J).item()
+        J[key] += torch.matmul(torch.matmul(x_T, torch.tensor(R)),x_T.transpose(1, 2)).reshape(batch_shape,1)
+
+        mc_J_mean[key] = torch.mean(J[key]).item()
 
         # Compute theoretical values if requested
         if is_n_variable:
-            lqr_mc.ee.change_time_steps(key)
-            t_tensor = torch.tensor(lqr_mc.t_0).reshape(1, 1)
+            lqr_mc.change_time_steps(key)
+            t_tensor = torch.tensor(lqr_mc.t).reshape(1, 1)
             s_tensor = x_t[key][0]
-            theoretical_v[key] = lqr_mc.ee.control_problem_value(t_tensor, s_tensor, sigma).item()
-            theoretical_alpha[key] = lqr_mc.ee.markov_control(t_tensor, s_tensor)
+            theoretical_v[key] = lqr_mc.control_problem_value(t_tensor, s_tensor, sigma).item()
+            theoretical_alpha[key] = lqr_mc.markov_control(t_tensor, s_tensor)
 
     err = [np.abs(mc_J_mean[key] - theoretical_v[key]) for key in mc_J_mean]
     return mc_J_mean, theoretical_v, err
