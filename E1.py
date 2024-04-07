@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from scipy.integrate import solve_ivp, quad
+from scipy.integrate import solve_ivp
 from numpy.linalg import inv
 
 
@@ -55,7 +55,7 @@ class LQR:
         v.append(values.flatten()[0])
       return torch.tensor(v)
     
-    
+
     #4）
     def markov_control(self, time_tensor, space_tensor):
       a = np.zeros(shape=(1, 2))
