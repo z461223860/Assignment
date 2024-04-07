@@ -5,7 +5,6 @@ import numpy as np
 import E1 as ee
 
 
-
 class DGM_Layer(nn.Module):
     def __init__(self, dim_x, dim_S, activation='Tanh'):
         super(DGM_Layer, self).__init__()
@@ -23,7 +22,6 @@ class DGM_Layer(nn.Module):
         R = self.gate_R(x_S)
         input_gate_H = torch.cat([x, S*R],1)
         H = self.gate_H(input_gate_H)
-
         output = ((1-G))*H + Z*S
         return output
 
@@ -46,12 +44,9 @@ class DGM_Layer(nn.Module):
             raise ValueError("Unknown activation function: {}".format(activation))
 
 
-
 class Net_DGM(nn.Module):
-
     def __init__(self, dim_x, dim_S, activation='Tanh'):
         super(Net_DGM, self).__init__()
-
         self.dim = dim_x
         if activation == 'ReLU':
             self.activation = nn.ReLU()
@@ -63,14 +58,12 @@ class Net_DGM(nn.Module):
             self.activation = nn.LogSigmoid()
         else:
             raise ValueError("Unknown activation function {}".format(activation))
-
         self.input_layer = nn.Sequential(nn.Linear(dim_x+1, dim_S), self.activation).to(torch.float64)
-
         self.DGM1 = DGM_Layer(dim_x=dim_x+1, dim_S=dim_S, activation=activation).to(torch.float64)
         self.DGM2 = DGM_Layer(dim_x=dim_x+1, dim_S=dim_S, activation=activation).to(torch.float64)
         self.DGM3 = DGM_Layer(dim_x=dim_x+1, dim_S=dim_S, activation=activation).to(torch.float64)
-
         self.output_layer = nn.Linear(dim_S, 1).to(torch.float64)
+
 
     def forward(self,t,x):
         tx = torch.cat([t,x], 1)
@@ -81,13 +74,12 @@ class Net_DGM(nn.Module):
         output = self.output_layer(S4)
         return output
 
+
 class FFN(nn.Module):
     def __init__(self, sizes, activation='relu', output_activation='identity', batch_norm=False):
         super().__init__()
-
         activation_func = self._get_activation(activation)
         output_activation_func = self._get_activation(output_activation)
-
         layers = []
         if batch_norm:
             layers.append(nn.BatchNorm1d(sizes[0]))
@@ -97,9 +89,7 @@ class FFN(nn.Module):
             layers.extend([
                 nn.Linear(sizes[j], sizes[j+1]),
                 activation_func().to(torch.float64),  # Ensure activation function dtype
-                nn.BatchNorm1d(sizes[j+1]) if batch_norm else nn.Identity()
-            ])
-
+                nn.BatchNorm1d(sizes[j+1]) if batch_norm else nn.Identity()])
         layers.append(nn.Linear(sizes[-2], sizes[-1]))
         layers.append(output_activation_func())
         self.net = nn.Sequential(*layers).to(torch.float64) 
@@ -137,9 +127,6 @@ class FFN(nn.Module):
             p.requires_grad = True
 
 
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 # Define LQR parameters
 dim = 2
 H = np.identity(dim)
@@ -159,7 +146,7 @@ lqr = ee.LQR(H, M, C, D, R, t_0, T)
 lqr.update_t_0_and_T(t_0=t_0, T=T, n=100)
 
 # Instantiate the model
-net_dgm = Net_DGM(dim_x=2, dim_S=100).to(device)
+net_dgm = Net_DGM(dim_x=2, dim_S=100)
 
 # Loss function and optimizer
 loss_function = nn.MSELoss()
@@ -201,8 +188,6 @@ while train:
 
     if epoch_counter > max_num_epochs:
         train = False
-
-training_loss_net_dgm = loss
 
 # Plot losses
 plt.plot(losses)
