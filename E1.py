@@ -65,3 +65,16 @@ class LQR:
         control = (-self.D_inv @ self.M.T @ S[0] @ x.numpy().T).T
         a = np.vstack((a, control))
       return torch.tensor(a[1:])
+    
+    
+    # Update the number of time steps
+    # Supplement
+    def change_time_steps(self,n):
+      self.number_of_time_steps = n
+      self.tau =(self.T - self.t) / n
+    def update_t_0_and_T(self, t_0,T, n=None):
+        self.t_0 = t_0
+        self.T = T
+        if n is None:
+            n = self.number_of_time_steps
+        self.change_time_steps(n)
