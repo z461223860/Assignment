@@ -11,6 +11,7 @@ def get_time_grid(t,T,size):
     grid = np.arange(t, T+0.00001, np.divide(T-t, np.divide(T-t, size)))
     return grid
 
+
 class LQR:
     # 1)
     def __init__(self, H, M, C, D, R, t = 0, T = 1, n=100):          
@@ -25,6 +26,7 @@ class LQR:
       self.tss = np.divide(T - t, n)
       self.D_inv = inv(self.D)
 
+
     # 2)
     def ricatti_ode(self,t, Q, H, M, C, D):
       # using Q' = S'(T-t)
@@ -32,11 +34,13 @@ class LQR:
       dq = -2* H.T @ Q + Q @ M @ np.linalg.inv(D) @ M.T @ Q - C
       return dq.flatten()
 
+
     def solve_ricatti_ode(self, time_grid):
       if len(time_grid) == 1:
         return [self.R]
       res = solve_ivp(self.ricatti_ode, (time_grid[0], time_grid[-1]), self.R.flatten() , t_eval=time_grid, args=(self.H, self.M, self.C, self.D))
       return res.y.T.reshape(-1, 2, 2)[::-1]
+
 
     #3)
     def control_problem_value(self, time_tensor, space_tensor, sigma):
@@ -50,6 +54,7 @@ class LQR:
         values = x @ S[0] @ torch.t(x) + integral
         v.append(values.flatten()[0])
       return torch.tensor(v)
+    
     
     #4）
     def markov_control(self, time_tensor, space_tensor):
