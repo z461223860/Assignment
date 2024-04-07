@@ -142,6 +142,7 @@ def simulate_once(sim, lqr_monte):
 
     return n_step_sim['err'], list(n_step_sim['theoretical_v'][0].keys()), n_batch_sim['err'], list(n_batch_sim['theoretical_v'][0].keys())
 
+
 def simulate(sim_x_values, lqr_monte):
     err_1_list = []
     err_2_list = []
