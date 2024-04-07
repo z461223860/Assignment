@@ -6,7 +6,6 @@ import E1 as ee
 import E2 as eee
 
 
-
 # Define LQR parameters
 dim = 2
 H = np.identity(dim)
@@ -71,12 +70,7 @@ while train:
     if epoch_counter > max_num_epochs:
         train = False
 
-y = lqr.markov_control(t_tensor, x_tensor).unsqueeze(1)
-# Compute loss
-loss = loss_function(y_pred.reshape(batch_size,2), y.reshape(batch_size,2))
-print('Validation Loss MSE {}'.format(loss))
-
-plt.plot(losses)
+plt.plot(losses[1:])
 plt.xlabel('Iteration')
 plt.ylabel('MSE Value')
 plt.title('MSE Loss w.r.t iteration number')
