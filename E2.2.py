@@ -19,17 +19,17 @@ T = 1
 batch_size = 256
 max_num_epochs = 1000
 loss_improvement_limit = 10
+sizes = [3, 100, 100, 2]
 
 # Initialize LQR object
 lqr = ee.LQR(H, M, C, D, R, t_0, T)
 lqr.update_t_0_and_T(t_0=t_0, T=T, n=100)
 
 # Instantiate the model
-net_dgm = eee.Net_DGM(dim_x=2, dim_S=100)
+net_ffn = eee.FFN(sizes = sizes)
 
 # Loss function and optimizer
 loss_function = nn.MSELoss()
-sizes = [3, 100, 100, 2]
 optimizer = torch.optim.Adam(eee.FFN(sizes = sizes).parameters(), lr=0.001)
 
 # Training loop
@@ -49,11 +49,11 @@ while train:
     if epoch_counter%50 == 0:
         print('Epoch {} / {}'.format(epoch_counter,max_num_epochs))
     y = lqr.markov_control(t_tensor, x_tensor)
-    y_pred = eee.net_ffn_control.forward(input_tensor).to(torch.float64)
+    y_pred = net_ffn.forward(input_tensor).to(torch.float64)
 
     loss = loss_function(y_pred, y)
     losses.append(loss.item())
-    eee.net_ffn_control.zero_grad()
+    net_ffn.zero_grad()
     loss.backward()
     optimizer.step()
 

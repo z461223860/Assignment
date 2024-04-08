@@ -75,6 +75,62 @@ class Net_DGM(nn.Module):
         return output
 
 
+class FFN(nn.Module):
+    def __init__(self, sizes, activation='relu', output_activation='identity', batch_norm=False):
+        super().__init__()
+
+        activation_func = self._get_activation(activation)
+        output_activation_func = self._get_activation(output_activation)
+
+        layers = []
+        if batch_norm:
+            layers.append(nn.BatchNorm1d(sizes[0]))
+
+        # Add hidden layers
+        for j in range(len(sizes) - 2):
+            layers.extend([
+                nn.Linear(sizes[j], sizes[j+1]),
+                activation_func().to(torch.float64),  # Ensure activation function dtype
+                nn.BatchNorm1d(sizes[j+1]) if batch_norm else nn.Identity()
+            ])
+
+        layers.append(nn.Linear(sizes[-2], sizes[-1]))
+        layers.append(output_activation_func())
+        self.net = nn.Sequential(*layers).to(torch.float64) 
+
+
+    def _get_activation(self, name):
+        if isinstance(name, str):
+            if name.lower() == 'relu':
+                return nn.ReLU
+            elif name.lower() == 'sigmoid':
+                return nn.Sigmoid
+            elif name.lower() == 'tanh':
+                return nn.Tanh
+            elif name.lower() == 'identity':
+                return nn.Identity
+            else:
+                raise ValueError(f"Unknown activation function: {name}")
+        elif callable(name):
+            return name
+        else:
+            raise ValueError("Activation must be a string or callable function.")
+
+
+    def forward(self, x):
+        return self.net(x).to(torch.float64)
+
+
+    def freeze(self):
+        for p in self.parameters():
+            p.requires_grad = False
+
+
+    def unfreeze(self):
+        for p in self.parameters():
+            p.requires_grad = True
+
+
 # Define LQR parameters
 dim = 2
 H = np.identity(dim)
